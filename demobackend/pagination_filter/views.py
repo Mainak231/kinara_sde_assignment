@@ -7,8 +7,9 @@ from django_filters import FilterSet, CharFilter, NumberFilter
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
-
+import logging
 # Create your views here.
+logger = logging.getLogger(__name__)
 
 class StudentAPIFilter(FilterSet):
     '''Filtering is managed from here'''
@@ -30,19 +31,28 @@ class StudentViews(GenericAPIView,ListModelMixin):
     serializer_class = StudentSerializer
     
     def get(self, request, *args, **kwargs):
-        page_size = request.GET.get('page_size')
-        page_number = request.GET.get('page')
+        try:
+            logger.info("Start ---> Fetching details")
+            page_size = request.GET.get('page_size')
+            page_number = request.GET.get('page')
+            
+            student_filter = StudentAPIFilter(request.GET, queryset=self.queryset)
+            students = student_filter.qs
+            
+            paginator = StudentListPagination()
+            paginator.page_size = int(page_size) if page_size else 9999999
+            paginator.page = int(page_number) if page_number else 1
+            page = paginator.paginate_queryset(students, request)
+            
+            serializer = StudentSerializer(page, many=True)
+            
+            return Response(serializer.data,status=status.HTTP_200_OK)
         
-        student_filter = StudentAPIFilter(request.GET, queryset=self.queryset)
-        students = student_filter.qs
-        
-        paginator = StudentListPagination()
-        paginator.page_size = int(page_size) if page_size else 9999999
-        paginator.page = int(page_number) if page_number else 1
-        page = paginator.paginate_queryset(students, request)
-        
-        serializer = StudentSerializer(page, many=True)
-        
-        return Response(serializer.data,status=status.HTTP_200_OK)
+        except Exception as ex:
+            logger.exception(ex)
+            error = getattr(ex, "message", repr(ex))
+            return Response(error, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        finally:
+            logger.info("End ---> Fetching details")
     
     
