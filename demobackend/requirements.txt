@@ -1,0 +1,7 @@
+django==5.0.1
+django-cors-headers
+djangorestframework
+django-db-connection-pool[postgresql]
+requests==2.31.0
+DateTime==5.4
+python-dotenv==1.0.1
